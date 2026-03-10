@@ -5,7 +5,7 @@ Detection Transformer (DETR) dari HuggingFace.
 
 Fitur:
 - Deteksi fraktur otomatis pada citra X-Ray
-- Pengaturan confidence threshold dan NMS via sidebar
+- Pengaturan confidence threshold via sidebar
 - Visualisasi bounding box dengan perbandingan Original vs Annotated
 - Unduh hasil anotasi sebagai file gambar
 - Riwayat deteksi per sesi
@@ -45,189 +45,315 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+        /* ---- Import font ---- */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+        /* ---- Global ---- */
+        html, body, .stApp, [data-testid="stAppViewContainer"] {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
         /* ---- Latar utama ---- */
         .stApp {
-            background-color: #0f1117;
-            color: #e0e0e0;
+            background: linear-gradient(160deg, #0a0e1a 0%, #101626 50%, #0d1220 100%);
+            color: #c9d1d9;
         }
 
         /* ---- Judul utama ---- */
-        h1 {
+        .app-title {
             text-align: center;
-            font-size: 2.2rem;
-            font-weight: 700;
-            color: #ffffff;
-            letter-spacing: 0.5px;
+            font-size: 2.6rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #60a5fa 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+            margin-bottom: 0.3rem;
+            animation: shimmer 3s ease-in-out infinite;
+        }
+        @keyframes shimmer {
+            0%, 100% { background-position: 0% center; }
+            50% { background-position: 200% center; }
         }
 
         /* ---- Sub-judul / deskripsi ---- */
         .subtitle {
             text-align: center;
-            color: #9ca3af;
-            font-size: 0.95rem;
+            color: #8b949e;
+            font-size: 1rem;
             margin-bottom: 2rem;
-            line-height: 1.6;
+            line-height: 1.7;
+            font-weight: 400;
         }
 
         /* ---- Kartu pembungkus konten ---- */
         .card {
-            background-color: #1c1f26;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1.25rem;
-            border: 1px solid #2d3141;
-            transition: box-shadow 0.3s ease;
+            background: linear-gradient(145deg, #161b2e 0%, #131827 100%);
+            border-radius: 16px;
+            padding: 1.4rem;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .card:hover {
-            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.12);
+            border-color: rgba(99, 102, 241, 0.35);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.08);
         }
 
         /* ---- Label kecil di atas gambar ---- */
         .section-label {
-            font-size: 0.78rem;
-            font-weight: 600;
+            font-size: 0.7rem;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #6b7280;
-            margin-bottom: 0.5rem;
+            letter-spacing: 1.5px;
+            color: #6366f1;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
         }
 
-        /* ---- Tombol utama ---- */
+        /* ---- Tombol utama (Proses Deteksi) ---- */
         div.stButton > button {
             width: 100%;
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #6366f1 100%);
+            background-size: 200% auto;
+            color: #ffffff;
             border: none;
-            border-radius: 10px;
-            padding: 0.75rem 1.5rem;
-            font-size: 1.05rem;
-            font-weight: 600;
+            border-radius: 14px;
+            padding: 0.85rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 700;
             cursor: pointer;
-            transition: all 0.25s ease;
-            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+            letter-spacing: 0.3px;
         }
         div.stButton > button:hover {
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.45);
-            transform: translateY(-1px);
+            background-position: right center;
+            box-shadow: 0 6px 25px rgba(99, 102, 241, 0.5);
+            transform: translateY(-2px);
+        }
+        div.stButton > button:active {
+            transform: translateY(0);
+        }
+
+        /* ---- Download tombol ---- */
+        div.stDownloadButton > button {
+            background: linear-gradient(135deg, #1e293b 0%, #1a2236 100%) !important;
+            border: 1px solid rgba(99, 102, 241, 0.3) !important;
+            color: #c4b5fd !important;
+            border-radius: 12px !important;
+            font-weight: 600 !important;
+            transition: all 0.25s ease !important;
+        }
+        div.stDownloadButton > button:hover {
+            border-color: rgba(99, 102, 241, 0.6) !important;
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.15) !important;
+            transform: translateY(-1px) !important;
         }
 
         /* ---- Gambar & border radius ---- */
         [data-testid="stImage"] > div {
-            border-radius: 10px;
+            border-radius: 12px;
             overflow: hidden;
+            border: 1px solid rgba(99, 102, 241, 0.1);
         }
 
         /* ---- Divider tipis ---- */
         hr {
-            border-color: #2d3141;
+            border-color: rgba(99, 102, 241, 0.1);
+            margin: 1.5rem 0;
         }
 
         /* ---- Metrik kartu ---- */
         .metric-card {
-            background: linear-gradient(135deg, #1e2330 0%, #1c1f26 100%);
-            border: 1px solid #2d3141;
-            border-radius: 12px;
-            padding: 1.2rem;
+            background: linear-gradient(145deg, #161b2e 0%, #131827 100%);
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            border-radius: 16px;
+            padding: 1.3rem 1rem;
             text-align: center;
-            transition: box-shadow 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #6366f1, #a78bfa);
+            border-radius: 16px 16px 0 0;
         }
         .metric-card:hover {
-            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.12);
+            border-color: rgba(99, 102, 241, 0.35);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.1);
+            transform: translateY(-2px);
         }
         .metric-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #3b82f6;
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #818cf8, #c4b5fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             line-height: 1;
         }
         .metric-label {
-            font-size: 0.75rem;
+            font-size: 0.68rem;
             color: #6b7280;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 0.4rem;
+            letter-spacing: 1.2px;
+            margin-top: 0.5rem;
+            font-weight: 600;
         }
 
         /* ---- Tabel deteksi ---- */
         .det-table {
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 0.5rem;
-            font-size: 0.9rem;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 0.75rem;
+            font-size: 0.88rem;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(99, 102, 241, 0.15);
         }
         .det-table th {
-            background-color: #1e2330;
-            color: #9ca3af;
+            background: linear-gradient(135deg, #161b2e 0%, #1a1f35 100%);
+            color: #818cf8;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-size: 0.72rem;
-            font-weight: 600;
-            padding: 0.6rem 0.8rem;
+            letter-spacing: 0.8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.8rem 1rem;
             text-align: left;
-            border-bottom: 2px solid #2d3141;
+            border-bottom: 2px solid rgba(99, 102, 241, 0.2);
         }
         .det-table td {
-            padding: 0.55rem 0.8rem;
-            border-bottom: 1px solid #2d3141;
-            color: #d1d5db;
+            padding: 0.7rem 1rem;
+            border-bottom: 1px solid rgba(99, 102, 241, 0.08);
+            color: #c9d1d9;
         }
         .det-table tr:hover td {
-            background-color: #1e2330;
+            background-color: rgba(99, 102, 241, 0.05);
+        }
+        .det-table tr:last-child td {
+            border-bottom: none;
         }
 
         /* ---- Confidence bar ---- */
         .conf-bar-bg {
-            background-color: #1e2330;
+            background-color: rgba(99, 102, 241, 0.1);
             border-radius: 6px;
-            height: 8px;
+            height: 6px;
             width: 100%;
             overflow: hidden;
         }
         .conf-bar-fill {
             height: 100%;
             border-radius: 6px;
-            transition: width 0.4s ease;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         /* ---- Sidebar styling ---- */
         section[data-testid="stSidebar"] {
-            background-color: #141720;
-            border-right: 1px solid #2d3141;
+            background: linear-gradient(180deg, #0d1220 0%, #0a0e1a 100%);
+            border-right: 1px solid rgba(99, 102, 241, 0.12);
         }
 
         /* ---- Sidebar header ---- */
         .sidebar-header {
-            font-size: 0.8rem;
-            font-weight: 600;
+            font-size: 0.72rem;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #6b7280;
+            letter-spacing: 1.8px;
+            color: #6366f1;
             margin-bottom: 0.5rem;
-            margin-top: 1rem;
+            margin-top: 1.2rem;
+        }
+
+        /* ---- History item ---- */
+        .history-item {
+            background: linear-gradient(145deg, #161b2e 0%, #131827 100%);
+            border: 1px solid rgba(99, 102, 241, 0.12);
+            border-radius: 10px;
+            padding: 0.6rem 0.8rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.82rem;
+            color: #c9d1d9;
+            transition: border-color 0.2s ease;
+        }
+        .history-item:hover {
+            border-color: rgba(99, 102, 241, 0.3);
         }
 
         /* ---- Footer ---- */
         .footer {
             text-align: center;
             color: #4b5563;
-            font-size: 0.78rem;
+            font-size: 0.75rem;
             margin-top: 3rem;
-            padding: 1.5rem 0;
-            border-top: 1px solid #2d3141;
+            padding: 1.8rem 0;
+            border-top: 1px solid rgba(99, 102, 241, 0.1);
+            letter-spacing: 0.3px;
         }
 
         /* ---- Image info badge ---- */
         .img-info {
             display: inline-block;
-            background-color: #1e2330;
-            border: 1px solid #2d3141;
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.15);
             border-radius: 8px;
-            padding: 0.3rem 0.7rem;
-            font-size: 0.78rem;
-            color: #9ca3af;
-            margin-right: 0.5rem;
-            margin-bottom: 0.3rem;
+            padding: 0.3rem 0.65rem;
+            font-size: 0.76rem;
+            color: #a5b4fc;
+            margin-right: 0.4rem;
+            margin-bottom: 0.4rem;
+            font-weight: 500;
+        }
+
+        /* ---- Upload area ---- */
+        [data-testid="stFileUploader"] {
+            border-radius: 16px;
+        }
+        [data-testid="stFileUploader"] section {
+            border-radius: 16px;
+            border: 2px dashed rgba(99, 102, 241, 0.25);
+            background: rgba(99, 102, 241, 0.03);
+            transition: all 0.3s ease;
+        }
+        [data-testid="stFileUploader"] section:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+            background: rgba(99, 102, 241, 0.06);
+        }
+
+        /* ---- Tab styling ---- */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 0;
+            background: linear-gradient(145deg, #161b2e 0%, #131827 100%);
+            border-radius: 12px;
+            padding: 4px;
+            border: 1px solid rgba(99, 102, 241, 0.12);
+        }
+        .stTabs [data-baseweb="tab"] {
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.88rem;
+            padding: 0.5rem 1.2rem;
+            color: #8b949e;
+        }
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+        }
+        .stTabs [data-baseweb="tab-highlight"] {
+            display: none;
+        }
+        .stTabs [data-baseweb="tab-border"] {
+            display: none;
         }
     </style>
     """,
@@ -239,10 +365,10 @@ st.markdown(
 # ---------------------------------------------------------------------------
 MODEL_CHECKPOINT = "model.ckpt"   # Checkpoint lokal model DETR
 DEFAULT_CONFIDENCE = 0.5           # Ambang batas confidence default
-DEFAULT_NMS_IOU = 0.5              # Ambang batas IoU untuk NMS default
+NMS_IOU_THRESHOLD = 0.5            # Ambang batas IoU untuk NMS (hardcoded)
 MAX_IMAGE_SIDE = 800               # Panjang sisi terpanjang untuk resize (px)
-BOX_COLOR = (59, 130, 246)         # Warna bounding box (biru, RGB)
-TEXT_BG_COLOR = (59, 130, 246)     # Warna latar label teks
+BOX_COLOR = (99, 102, 241)         # Warna bounding box (indigo, RGB)
+TEXT_BG_COLOR = (99, 102, 241)     # Warna latar label teks
 TEXT_COLOR = (255, 255, 255)       # Warna teks label
 
 # Indeks kelas fraktur sesuai label_id model DETR yang dilatih.
@@ -298,7 +424,7 @@ def load_model() -> Tuple[DetrImageProcessor, DetrForObjectDetection]:
 # 2. FUNGSI UTILITAS — Non-Maximum Suppression (NMS)
 # ===========================================================================
 def apply_nms(
-    detections: List[Dict], iou_threshold: float = 0.5
+    detections: List[Dict], iou_threshold: float = NMS_IOU_THRESHOLD
 ) -> List[Dict]:
     """
     Menerapkan Non-Maximum Suppression untuk menyaring deteksi yang
@@ -330,7 +456,6 @@ def run_inference(
     processor: DetrImageProcessor,
     model: DetrForObjectDetection,
     confidence_threshold: float = DEFAULT_CONFIDENCE,
-    nms_iou_threshold: float = DEFAULT_NMS_IOU,
 ) -> List[Dict]:
     """
     Melakukan inferensi DETR pada gambar PIL yang diberikan.
@@ -340,7 +465,6 @@ def run_inference(
         processor: DetrImageProcessor yang sudah di-load.
         model: DetrForObjectDetection yang sudah di-load.
         confidence_threshold: Ambang batas minimum confidence score.
-        nms_iou_threshold: Ambang batas IoU untuk NMS.
 
     Returns:
         List of dict dengan kunci 'box' (xyxy piksel) dan 'score' (float),
@@ -348,29 +472,28 @@ def run_inference(
     """
     orig_width, orig_height = image.size
     logger.info(
-        "Menjalankan inferensi — ukuran gambar: %dx%d, threshold: %.2f, NMS IoU: %.2f",
+        "Menjalankan inferensi - ukuran gambar: %dx%d, threshold: %.2f",
         orig_width,
         orig_height,
         confidence_threshold,
-        nms_iou_threshold,
     )
 
     # --- Preprocessing ---
     # DetrImageProcessor secara otomatis menangani:
-    #   • Resize sisi terpanjang ke MAX_IMAGE_SIDE
-    #   • Normalisasi nilai piksel menggunakan statistik ImageNet
-    #   • Padding agar ukuran seragam dalam satu batch
-    #   • Konversi ke tensor PyTorch
+    #   - Resize sisi terpanjang ke MAX_IMAGE_SIDE
+    #   - Normalisasi nilai piksel menggunakan statistik ImageNet
+    #   - Padding agar ukuran seragam dalam satu batch
+    #   - Konversi ke tensor PyTorch
     inputs = processor(images=image, return_tensors="pt")
 
     # --- Inferensi ---
-    # torch.no_grad() menonaktifkan perhitungan gradien → hemat memori & lebih cepat
+    # torch.no_grad() menonaktifkan perhitungan gradien -> hemat memori & lebih cepat
     with torch.no_grad():
         outputs = model(**inputs)
 
     # Ambil logits (prediksi kelas mentah) dan pred_boxes (koordinat ternormalisasi)
     logits = outputs.logits          # shape: (1, num_queries, num_classes + 1)
-    pred_boxes = outputs.pred_boxes  # shape: (1, num_queries, 4) – format cxcywh [0,1]
+    pred_boxes = outputs.pred_boxes  # shape: (1, num_queries, 4) - format cxcywh [0,1]
 
     # Hitung confidence score menggunakan Softmax pada dimensi kelas
     probs = torch.nn.functional.softmax(logits, dim=-1)
@@ -388,7 +511,7 @@ def run_inference(
         if conf < confidence_threshold:
             continue
 
-        # Konversi format cxcywh (ternormalisasi) → xyxy (piksel gambar asli)
+        # Konversi format cxcywh (ternormalisasi) -> xyxy (piksel gambar asli)
         cx, cy, w, h = box.tolist()
         x1 = (cx - w / 2) * orig_width
         y1 = (cy - h / 2) * orig_height
@@ -404,12 +527,12 @@ def run_inference(
         detections.append({"box": (x1, y1, x2, y2), "score": conf})
 
     # Terapkan NMS untuk menghilangkan deteksi duplikat
-    detections = apply_nms(detections, iou_threshold=nms_iou_threshold)
+    detections = apply_nms(detections, iou_threshold=NMS_IOU_THRESHOLD)
 
     # Urutkan berdasarkan score tertinggi
     detections.sort(key=lambda d: d["score"], reverse=True)
 
-    logger.info("Inferensi selesai — %d fraktur terdeteksi.", len(detections))
+    logger.info("Inferensi selesai - %d fraktur terdeteksi.", len(detections))
     return detections
 
 
@@ -520,7 +643,7 @@ def get_confidence_color(score: float) -> str:
 
 
 # ===========================================================================
-# SIDEBAR — Pengaturan & Informasi
+# SIDEBAR — Pengaturan
 # ===========================================================================
 with st.sidebar:
     st.markdown("## ⚙️ Pengaturan")
@@ -536,53 +659,22 @@ with st.sidebar:
         help="Ambang batas minimum confidence score. Deteksi di bawah nilai ini akan diabaikan.",
     )
 
-    nms_iou_threshold = st.slider(
-        "NMS IoU Threshold",
-        min_value=0.1,
-        max_value=0.95,
-        value=DEFAULT_NMS_IOU,
-        step=0.05,
-        help=(
-            "Non-Maximum Suppression: menghilangkan deteksi duplikat yang saling tumpang-tindih. "
-            "Nilai lebih rendah = penyaringan lebih ketat."
-        ),
-    )
-
-    st.divider()
-
-    st.markdown('<p class="sidebar-header">Tentang Aplikasi</p>', unsafe_allow_html=True)
-    st.markdown(
-        """
-        **Deteksi Fraktur Tulang** menggunakan arsitektur
-        *Detection Transformer* (DETR) untuk mendeteksi area fraktur
-        pada citra X-Ray secara otomatis.
-
-        **Teknologi:**
-        - 🧠 PyTorch + HuggingFace Transformers
-        - 🖼️ Pillow untuk visualisasi
-        - 🎨 Streamlit untuk antarmuka web
-
-        **Cara Penggunaan:**
-        1. Unggah citra X-Ray (JPG/PNG)
-        2. Sesuaikan parameter jika diperlukan
-        3. Klik **Proses Deteksi Fraktur**
-        4. Lihat hasil dan unduh gambar anotasi
-        """,
-        unsafe_allow_html=True,
-    )
-
     st.divider()
 
     # Riwayat deteksi
     st.markdown('<p class="sidebar-header">Riwayat Sesi</p>', unsafe_allow_html=True)
     if st.session_state.history:
         for i, entry in enumerate(reversed(st.session_state.history), start=1):
+            idx = len(st.session_state.history) - i + 1
             count = entry["count"]
             avg = entry["avg_conf"]
             icon = "🔴" if count > 0 else "🟢"
             st.markdown(
-                f"{icon} **#{len(st.session_state.history) - i + 1}** — "
+                f'<div class="history-item">'
+                f"{icon} <b>#{idx}</b> &mdash; "
                 f"{count} fraktur (avg {avg:.0%})"
+                f"</div>",
+                unsafe_allow_html=True,
             )
     else:
         st.caption("Belum ada deteksi yang dijalankan.")
@@ -593,12 +685,12 @@ with st.sidebar:
 # ===========================================================================
 
 # Judul dan deskripsi singkat
-st.markdown("<h1>🦴 Deteksi Fraktur Tulang</h1>", unsafe_allow_html=True)
+st.markdown('<h1 class="app-title">🦴 Deteksi Fraktur Tulang</h1>', unsafe_allow_html=True)
 st.markdown(
     '<p class="subtitle">'
-    "Sistem deteksi fraktur tulang berbasis <b>DETR</b> "
-    "(<i>Detection Transformer</i>) pada citra X-Ray.<br>"
-    "Unggah citra, sesuaikan parameter di sidebar, lalu klik tombol deteksi."
+    "Sistem cerdas untuk mendeteksi fraktur tulang pada citra X-Ray "
+    "menggunakan <b>DETR</b> (<i>Detection Transformer</i>).<br>"
+    "Unggah citra &bull; Atur threshold di sidebar &bull; Klik deteksi"
     "</p>",
     unsafe_allow_html=True,
 )
@@ -622,7 +714,10 @@ if uploaded_file is not None:
     img_w, img_h = original_image.size
     file_size = uploaded_file.size
 
-    st.markdown('<p class="section-label">🖼️ Preview Citra & Informasi</p>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="section-label">🖼️ Preview Citra & Informasi</p>',
+        unsafe_allow_html=True,
+    )
 
     col_img, col_info = st.columns([3, 1])
 
@@ -630,25 +725,15 @@ if uploaded_file is not None:
         st.image(original_image, use_container_width=True)
 
     with col_info:
-        st.markdown(
-            f"""
-            <div class="card">
-                <p class="sidebar-header" style="margin-top:0">Metadata</p>
-                <span class="img-info">📐 {img_w} × {img_h} px</span><br>
-                <span class="img-info">📁 {get_file_size_str(file_size)}</span><br>
-                <span class="img-info">🎨 {original_image.mode}</span><br>
-                <span class="img-info">📄 {uploaded_file.type or 'N/A'}</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        # Info rasio aspek
         g = gcd(img_w, img_h)
         st.markdown(
             f"""
             <div class="card">
-                <p class="sidebar-header" style="margin-top:0">Detail</p>
+                <p class="sidebar-header" style="margin-top:0">📋 Metadata Gambar</p>
+                <span class="img-info">📐 {img_w} &times; {img_h} px</span><br>
+                <span class="img-info">📁 {get_file_size_str(file_size)}</span><br>
+                <span class="img-info">🎨 {original_image.mode}</span><br>
+                <span class="img-info">📄 {uploaded_file.type or 'N/A'}</span><br>
                 <span class="img-info">📏 Rasio {img_w // g}:{img_h // g}</span><br>
                 <span class="img-info">🔢 {img_w * img_h:,} piksel</span>
             </div>
@@ -684,7 +769,6 @@ if process_button:
                     processor,
                     model,
                     confidence_threshold=confidence_threshold,
-                    nms_iou_threshold=nms_iou_threshold,
                 )
         except Exception as exc:
             st.error(f"❌ Terjadi kesalahan saat inferensi: {exc}")
@@ -707,7 +791,10 @@ if process_button:
         st.divider()
 
         # ----- Ringkasan Metrik -----
-        st.markdown('<p class="section-label">📊 Ringkasan Deteksi</p>', unsafe_allow_html=True)
+        st.markdown(
+            '<p class="section-label">📊 Ringkasan Deteksi</p>',
+            unsafe_allow_html=True,
+        )
         m1, m2, m3, m4 = st.columns(4)
 
         max_conf = max((d["score"] for d in detections), default=0.0)
@@ -745,18 +832,22 @@ if process_button:
         st.markdown("")  # spacing
 
         # ----- Tabs: Perbandingan & Detail -----
-        tab_compare, tab_detail = st.tabs(["🖼️ Perbandingan Citra", "📋 Detail Deteksi"])
+        tab_compare, tab_detail = st.tabs(
+            ["🖼️ Perbandingan Citra", "📋 Detail Deteksi"]
+        )
 
         with tab_compare:
             col_orig, col_result = st.columns(2)
             with col_orig:
                 st.markdown(
-                    '<p class="section-label">Citra Asli</p>', unsafe_allow_html=True
+                    '<p class="section-label">Citra Asli</p>',
+                    unsafe_allow_html=True,
                 )
                 st.image(original_image, use_container_width=True)
             with col_result:
                 st.markdown(
-                    '<p class="section-label">Hasil Deteksi</p>', unsafe_allow_html=True
+                    '<p class="section-label">Hasil Deteksi</p>',
+                    unsafe_allow_html=True,
                 )
                 st.image(result_image, use_container_width=True)
 
@@ -784,8 +875,8 @@ if process_button:
                                 </div>
                             </div>
                         </td>
-                        <td>({x1}, {y1}) → ({x2}, {y2})</td>
-                        <td>{area:,} px²</td>
+                        <td>({x1}, {y1}) &rarr; ({x2}, {y2})</td>
+                        <td>{area:,} px&sup2;</td>
                     </tr>"""
 
                 st.markdown(
@@ -795,7 +886,7 @@ if process_button:
                             <tr>
                                 <th>#</th>
                                 <th>Confidence</th>
-                                <th>Koordinat (x1,y1)→(x2,y2)</th>
+                                <th>Koordinat (x1,y1)&rarr;(x2,y2)</th>
                                 <th>Luas Area</th>
                             </tr>
                         </thead>
@@ -835,7 +926,7 @@ if process_button:
 # ===========================================================================
 st.markdown(
     '<div class="footer">'
-    "🦴 Bone Fracture Detection System — "
+    "🦴 Bone Fracture Detection System &mdash; "
     "Dibangun dengan Streamlit, PyTorch, dan HuggingFace Transformers"
     "</div>",
     unsafe_allow_html=True,
