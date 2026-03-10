@@ -402,6 +402,7 @@ MIN_BOX_AREA_RATIO = 0.001        # Min rasio luas bbox/gambar (< 0.1% = noise p
 MAX_BOX_AREA_RATIO = 0.90         # Max rasio luas bbox/gambar (> 90% = seluruh gambar)
 RAW_SCORE_THRESHOLD = 0.01        # Threshold rendah untuk mengumpulkan semua skor mentah
 MIN_SUGGEST_GAP = 0.05            # Gap minimum antar skor untuk auto-suggest threshold
+MAX_HISTORY_SIZE = 10             # Maksimum jumlah entri riwayat sesi
 
 
 # ---------------------------------------------------------------------------
@@ -1023,6 +1024,10 @@ if process_button:
             "confidence_threshold": confidence_threshold,
         })
 
+        # Batasi jumlah riwayat untuk menghemat memori
+        if len(st.session_state.history) > MAX_HISTORY_SIZE:
+            st.session_state.history = st.session_state.history[-MAX_HISTORY_SIZE:]
+
         # Pilih otomatis entri riwayat terbaru
         st.session_state.selected_history = len(st.session_state.history) - 1
 
@@ -1054,6 +1059,8 @@ elif st.session_state.selected_history is not None:
             all_fracture_scores=entry["all_fracture_scores"],
             confidence_threshold=entry["confidence_threshold"],
         )
+    else:
+        st.session_state.selected_history = None
 
 # ===========================================================================
 # FOOTER
