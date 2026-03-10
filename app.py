@@ -14,6 +14,7 @@ Fitur:
 
 import io
 import logging
+import time
 from math import gcd
 from typing import List, Dict, Tuple, Optional
 
@@ -371,6 +372,12 @@ BOX_COLOR = (99, 102, 241)         # Warna bounding box (indigo, RGB)
 TEXT_BG_COLOR = (99, 102, 241)     # Warna latar label teks
 TEXT_COLOR = (255, 255, 255)       # Warna teks label
 
+FRACTURE_LABEL = 0                 # Label 0 = fraktur pada model DETR
+MIN_BOX_AREA_RATIO = 0.001        # Min rasio luas bbox/gambar (< 0.1% = noise piksel)
+MAX_BOX_AREA_RATIO = 0.90         # Max rasio luas bbox/gambar (> 90% = seluruh gambar)
+RAW_SCORE_THRESHOLD = 0.01        # Threshold rendah untuk mengumpulkan semua skor mentah
+MIN_SUGGEST_GAP = 0.05            # Gap minimum antar skor untuk auto-suggest threshold
+
 
 # ---------------------------------------------------------------------------
 # Inisialisasi session state
@@ -443,7 +450,42 @@ def apply_nms(
 
 
 # ===========================================================================
-# 3. FUNGSI PREPROCESSING & INFERENSI
+# 3. FUNGSI AUTO-SUGGEST THRESHOLD
+# ===========================================================================
+def suggest_threshold(scores: List[float]) -> Optional[float]:
+    """
+    Menyarankan threshold optimal berdasarkan distribusi skor.
+
+    Mencari gap terbesar antara skor berurutan untuk menemukan
+    titik pemisah alami antara deteksi positif dan negatif.
+
+    Args:
+        scores: Daftar skor confidence mentah dari semua deteksi fraktur.
+
+    Returns:
+        Threshold yang disarankan, atau None jika tidak ada saran.
+    """
+    if len(scores) < 2:
+        return None
+
+    sorted_scores = sorted(scores)
+
+    max_gap = 0.0
+    best_threshold = None
+    for i in range(len(sorted_scores) - 1):
+        gap = sorted_scores[i + 1] - sorted_scores[i]
+        if gap > max_gap:
+            max_gap = gap
+            best_threshold = (sorted_scores[i] + sorted_scores[i + 1]) / 2
+
+    if max_gap < MIN_SUGGEST_GAP:
+        return None
+
+    return round(best_threshold, 2)
+
+
+# ===========================================================================
+# 4. FUNGSI PREPROCESSING & INFERENSI
 #    Menangani konversi gambar → tensor, inferensi model, dan post-processing.
 # ===========================================================================
 def run_inference(
@@ -451,7 +493,7 @@ def run_inference(
     processor: DetrImageProcessor,
     model: DetrForObjectDetection,
     confidence_threshold: float = DEFAULT_CONFIDENCE,
-) -> List[Dict]:
+) -> Dict:
     """
     Melakukan inferensi DETR pada gambar PIL yang diberikan.
 
@@ -462,10 +504,15 @@ def run_inference(
         confidence_threshold: Ambang batas minimum confidence score.
 
     Returns:
-        List of dict dengan kunci 'box' (xyxy piksel) dan 'score' (float),
-        sudah difilter oleh threshold dan NMS, terurut berdasarkan score.
+        Dict dengan kunci:
+        - 'detections': List of dict (box, score) terfilter dan terurut.
+        - 'all_fracture_scores': Semua skor fraktur mentah (sebelum threshold user).
+        - 'inference_time': Waktu inferensi dalam detik.
+        - 'label_filtered': Jumlah deteksi yang dibuang karena bukan fraktur.
+        - 'bbox_filtered': Jumlah deteksi yang dibuang karena ukuran bbox tidak valid.
     """
     orig_width, orig_height = image.size
+    image_area = orig_width * orig_height
     logger.info(
         "Menjalankan inferensi - ukuran gambar: %dx%d, threshold: %.2f",
         orig_width,
@@ -474,35 +521,46 @@ def run_inference(
     )
 
     # --- Preprocessing ---
-    # DetrImageProcessor secara otomatis menangani:
-    #   - Resize sisi terpanjang ke MAX_IMAGE_SIDE
-    #   - Normalisasi nilai piksel menggunakan statistik ImageNet
-    #   - Padding agar ukuran seragam dalam satu batch
-    #   - Konversi ke tensor PyTorch
     inputs = processor(images=image, return_tensors="pt")
 
-    # --- Inferensi ---
-    # torch.no_grad() menonaktifkan perhitungan gradien -> hemat memori & lebih cepat
+    # --- Inferensi dengan pengukuran waktu ---
+    start_time = time.time()
     with torch.no_grad():
         outputs = model(**inputs)
+    inference_time = time.time() - start_time
 
     # --- Post-Processing ---
-    # Gunakan post_process_object_detection dari processor untuk konversi
-    # koordinat yang benar. Metode ini memperhitungkan resize dan padding
-    # yang dilakukan saat preprocessing, sehingga bounding box akurat
-    # pada ukuran gambar asli.
+    # Gunakan threshold rendah untuk mengumpulkan semua skor mentah
     target_sizes = torch.tensor([(orig_height, orig_width)])
     results = processor.post_process_object_detection(
-        outputs, target_sizes=target_sizes, threshold=confidence_threshold
+        outputs, target_sizes=target_sizes, threshold=RAW_SCORE_THRESHOLD
     )
 
     result = results[0]
     scores = result["scores"]
     boxes = result["boxes"]
+    labels = result["labels"]
 
+    all_fracture_scores: List[float] = []
     detections: List[Dict] = []
-    for score, box in zip(scores, boxes):
+    label_filtered = 0
+    bbox_filtered = 0
+    min_box_area = image_area * MIN_BOX_AREA_RATIO
+    max_box_area = image_area * MAX_BOX_AREA_RATIO
+
+    for score, box, label in zip(scores, boxes, labels):
+        # --- Filter Label: hanya simpan kelas fraktur (label 0) ---
+        if label.item() != FRACTURE_LABEL:
+            label_filtered += 1
+            continue
+
         conf = score.item()
+        all_fracture_scores.append(conf)
+
+        # --- Filter Threshold: terapkan threshold pengguna ---
+        if conf < confidence_threshold:
+            continue
+
         x1, y1, x2, y2 = box.tolist()
 
         # Klem koordinat agar tidak keluar dari batas gambar
@@ -510,6 +568,17 @@ def run_inference(
         y1 = max(0, int(y1))
         x2 = min(orig_width, int(x2))
         y2 = min(orig_height, int(y2))
+
+        # --- Validasi Ukuran Bounding Box ---
+        box_area = (x2 - x1) * (y2 - y1)
+        if box_area < min_box_area:
+            bbox_filtered += 1
+            logger.debug("Bbox terlalu kecil dibuang: area=%d, min=%d", box_area, int(min_box_area))
+            continue
+        if box_area > max_box_area:
+            bbox_filtered += 1
+            logger.debug("Bbox terlalu besar dibuang: area=%d, max=%d", box_area, int(max_box_area))
+            continue
 
         detections.append({"box": (x1, y1, x2, y2), "score": conf})
 
@@ -519,12 +588,23 @@ def run_inference(
     # Urutkan berdasarkan score tertinggi
     detections.sort(key=lambda d: d["score"], reverse=True)
 
-    logger.info("Inferensi selesai - %d fraktur terdeteksi.", len(detections))
-    return detections
+    logger.info(
+        "Inferensi selesai dalam %.2fs - %d fraktur terdeteksi "
+        "(label_filtered=%d, bbox_filtered=%d).",
+        inference_time, len(detections), label_filtered, bbox_filtered,
+    )
+
+    return {
+        "detections": detections,
+        "all_fracture_scores": all_fracture_scores,
+        "inference_time": inference_time,
+        "label_filtered": label_filtered,
+        "bbox_filtered": bbox_filtered,
+    }
 
 
 # ===========================================================================
-# 4. FUNGSI VISUALISASI
+# 5. FUNGSI VISUALISASI
 #    Menggambar bounding box dan label pada gambar asli menggunakan PIL.
 # ===========================================================================
 def _load_font(font_size: int) -> ImageFont.FreeTypeFont:
@@ -602,7 +682,7 @@ def draw_detections(image: Image.Image, detections: List[Dict]) -> Image.Image:
 
 
 # ===========================================================================
-# 5. FUNGSI UTILITAS — Konversi gambar ke bytes untuk unduhan
+# 6. FUNGSI UTILITAS — Konversi gambar ke bytes untuk unduhan
 # ===========================================================================
 def image_to_bytes(image: Image.Image, fmt: str = "PNG") -> bytes:
     """Mengonversi PIL.Image ke bytes buffer untuk unduhan."""
@@ -751,16 +831,31 @@ if process_button:
         try:
             # Jalankan preprocessing dan inferensi
             with st.spinner("🔄 Menganalisis citra…"):
-                detections = run_inference(
+                inference_result = run_inference(
                     original_image,
                     processor,
                     model,
                     confidence_threshold=confidence_threshold,
                 )
+                detections = inference_result["detections"]
+                all_fracture_scores = inference_result["all_fracture_scores"]
+                inference_time = inference_result["inference_time"]
+                label_filtered = inference_result["label_filtered"]
+                bbox_filtered = inference_result["bbox_filtered"]
         except Exception as exc:
             st.error(f"❌ Terjadi kesalahan saat inferensi: {exc}")
             logger.exception("Inference error")
             st.stop()
+
+        # Tampilkan informasi waktu inferensi
+        st.markdown(
+            f'<div class="card" style="text-align:center;">'
+            f'⏱️ Waktu inferensi: <b>{inference_time:.2f} detik</b>'
+            f' &nbsp;|&nbsp; 🏷️ Filter label (non-fraktur): <b>{label_filtered}</b>'
+            f' &nbsp;|&nbsp; 📏 Filter ukuran bbox: <b>{bbox_filtered}</b>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
         # Gambar bounding box pada gambar asli
         result_image = draw_detections(original_image, detections)
@@ -883,10 +978,32 @@ if process_button:
                     unsafe_allow_html=True,
                 )
             else:
-                st.info(
-                    "ℹ️ Tidak ada fraktur terdeteksi pada citra ini. "
-                    "Coba turunkan *Confidence Threshold* di sidebar."
+                st.markdown(
+                    '<div class="card" style="text-align:center; border-color: rgba(34,197,94,0.4);">'
+                    '<div style="font-size:2.5rem; margin-bottom:0.5rem;">✅</div>'
+                    '<div style="font-size:1.2rem; font-weight:700; color:#22c55e; margin-bottom:0.5rem;">'
+                    'Tidak Terdeteksi Fraktur</div>'
+                    '<div style="color:#8b949e; font-size:0.9rem;">'
+                    'Sistem <b>tidak menemukan</b> indikasi fraktur pada citra X-Ray ini '
+                    'dengan threshold <b>{:.0%}</b>.<br>'
+                    '⚠️ <i>Hasil ini bersifat asistensi dan bukan diagnosis medis. '
+                    'Selalu konsultasikan dengan dokter atau radiolog untuk interpretasi klinis.</i>'
+                    '</div></div>'.format(confidence_threshold),
+                    unsafe_allow_html=True,
                 )
+
+        # ----- Auto-Suggest Threshold -----
+        suggested = suggest_threshold(all_fracture_scores)
+        if suggested is not None and suggested != confidence_threshold:
+            st.markdown(
+                f'<div class="card" style="border-color: rgba(245,158,11,0.4);">'
+                f'💡 <b>Saran Threshold:</b> Berdasarkan distribusi {len(all_fracture_scores)} '
+                f'skor fraktur mentah, threshold optimal yang disarankan adalah '
+                f'<b>{suggested:.2f}</b> (saat ini: {confidence_threshold:.2f}). '
+                f'Atur slider di sidebar untuk menyesuaikan.'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
         # ----- Tombol unduh gambar hasil -----
         st.divider()
