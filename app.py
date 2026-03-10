@@ -14,6 +14,7 @@ Fitur:
 
 import io
 import logging
+from math import gcd
 from typing import List, Dict, Tuple, Optional
 
 import torch
@@ -25,7 +26,7 @@ from transformers import DetrForObjectDetection, DetrImageProcessor
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
-logging.basicConfig(level=logging.INFO, format="%(asctime)s — %(levelname)s — %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -643,8 +644,6 @@ if uploaded_file is not None:
         )
 
         # Info rasio aspek
-        from math import gcd
-
         g = gcd(img_w, img_h)
         st.markdown(
             f"""
