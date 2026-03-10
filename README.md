@@ -132,15 +132,14 @@ Berikut adalah variabel-variabel *hardcoded* di bagian atas file `app.py` yang d
 | `BOX_COLOR` | `(99, 102, 241)` | Warna bounding box dalam format RGB | Ganti tuple RGB, misalnya `(255, 0, 0)` untuk merah |
 | `TEXT_BG_COLOR` | `(99, 102, 241)` | Warna latar belakang label teks (RGB) | Sesuaikan dengan `BOX_COLOR` agar konsisten |
 | `TEXT_COLOR` | `(255, 255, 255)` | Warna teks label (RGB) | Pastikan kontras yang cukup terhadap `TEXT_BG_COLOR` |
-| `FRACTURE_LABEL` | `"fracture"` | Label kelas fraktur untuk filtering hasil deteksi | Ubah jika model Anda menggunakan label kelas yang berbeda |
 
 ### Contoh Mengubah Konfigurasi
 
 ```python
 # ---- Di bagian atas app.py ----
 
-# Menggunakan model dari HuggingFace Hub
-MODEL_CHECKPOINT = "nantarach/bone-fracture-detr"
+# Menggunakan model lain dari HuggingFace Hub
+MODEL_CHECKPOINT = "facebook/detr-resnet-50"
 
 # Meningkatkan sensitivitas deteksi (lebih banyak hasil, termasuk yang kurang yakin)
 DEFAULT_CONFIDENCE = 0.3

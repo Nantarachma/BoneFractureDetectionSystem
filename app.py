@@ -371,10 +371,6 @@ BOX_COLOR = (99, 102, 241)         # Warna bounding box (indigo, RGB)
 TEXT_BG_COLOR = (99, 102, 241)     # Warna latar label teks
 TEXT_COLOR = (255, 255, 255)       # Warna teks label
 
-# Label kelas fraktur untuk filtering hasil deteksi.
-# Digunakan jika model memiliki kelas selain fraktur (opsional).
-FRACTURE_LABEL = "fracture"
-
 
 # ---------------------------------------------------------------------------
 # Inisialisasi session state
