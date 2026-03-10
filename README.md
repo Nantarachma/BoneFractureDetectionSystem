@@ -80,14 +80,16 @@ Input Citra X-Ray (JPG/PNG)
 └────────┬────────┘
          ▼
 ┌─────────────────┐
-│ Post-Processing  │  Konversi koordinat, filter threshold, NMS
+│ Post-Processing  │  Filter label (fraktur only), validasi ukuran bbox,
+│                  │  filter threshold, NMS
 └────────┬────────┘
          ▼
 ┌─────────────────┐
 │  Visualisasi     │  Bounding box + label confidence pada gambar
 └────────┬────────┘
          ▼
-   Hasil Deteksi (Annotated Image + Metrik)
+   Hasil Deteksi (Annotated Image + Metrik + Waktu Inferensi
+                   + Auto-Suggest Threshold)
 ```
 
 ---
@@ -107,7 +109,7 @@ BoneFractureDetectionSystem/
 ## 🎯 Cara Penggunaan
 
 1. **Buka aplikasi** di browser setelah menjalankan `streamlit run app.py` (default: `http://localhost:8501`)
-2. **Atur Confidence Threshold** pada sidebar di sebelah kiri — geser slider untuk menentukan ambang batas minimum confidence score deteksi (default: 0.5)
+2. **Atur Confidence Threshold** pada sidebar di sebelah kiri — geser slider untuk menentukan ambang batas minimum confidence score deteksi (default: 0.1)
 3. **Unggah citra X-Ray** melalui area upload di halaman utama (format: JPG, JPEG, atau PNG)
 4. **Periksa preview** — gambar yang diunggah akan tampil bersama metadata (dimensi, ukuran file, rasio aspek)
 5. **Klik tombol** "🔍 Proses Deteksi Fraktur" untuk memulai analisis
@@ -126,12 +128,15 @@ Berikut adalah variabel-variabel *hardcoded* di bagian atas file `app.py` yang d
 | Variabel | Default | Deskripsi | Cara Mengubah |
 |---|---|---|---|
 | `MODEL_CHECKPOINT` | `"nantarach/bone-fracture-detr"` | ID model HuggingFace Hub atau path checkpoint lokal | Ganti dengan model ID HuggingFace atau path lokal, misalnya `"facebook/detr-resnet-50"` |
-| `DEFAULT_CONFIDENCE` | `0.5` | Nilai default slider confidence threshold | Ubah ke angka antara `0.0`-`1.0`; nilai lebih rendah = lebih banyak deteksi (lebih sensitif), nilai lebih tinggi = lebih sedikit deteksi (lebih presisi) |
+| `DEFAULT_CONFIDENCE` | `0.1` | Nilai default slider confidence threshold | Ubah ke angka antara `0.0`-`1.0`; nilai lebih rendah = lebih banyak deteksi (lebih sensitif), nilai lebih tinggi = lebih sedikit deteksi (lebih presisi) |
 | `NMS_IOU_THRESHOLD` | `0.5` | Ambang batas IoU untuk Non-Maximum Suppression | Ubah ke angka antara `0.0`-`1.0`; nilai lebih rendah = penyaringan lebih ketat (lebih sedikit overlap), nilai lebih tinggi = mengizinkan lebih banyak overlap |
 | `MAX_IMAGE_SIDE` | `800` | Ukuran sisi terpanjang gambar saat preprocessing (piksel) | Naikkan untuk resolusi input lebih tinggi (membutuhkan lebih banyak memori), turunkan untuk inferensi lebih cepat |
 | `BOX_COLOR` | `(99, 102, 241)` | Warna bounding box dalam format RGB | Ganti tuple RGB, misalnya `(255, 0, 0)` untuk merah |
 | `TEXT_BG_COLOR` | `(99, 102, 241)` | Warna latar belakang label teks (RGB) | Sesuaikan dengan `BOX_COLOR` agar konsisten |
 | `TEXT_COLOR` | `(255, 255, 255)` | Warna teks label (RGB) | Pastikan kontras yang cukup terhadap `TEXT_BG_COLOR` |
+| `FRACTURE_LABEL` | `0` | ID label kelas fraktur pada model DETR | Sesuaikan jika model menggunakan label berbeda untuk fraktur |
+| `MIN_BOX_AREA_RATIO` | `0.001` | Rasio minimum luas bbox terhadap luas gambar | Naikkan untuk membuang lebih banyak deteksi kecil (noise) |
+| `MAX_BOX_AREA_RATIO` | `0.90` | Rasio maksimum luas bbox terhadap luas gambar | Turunkan untuk membuang lebih banyak deteksi yang terlalu besar |
 
 ### Contoh Mengubah Konfigurasi
 
