@@ -363,7 +363,7 @@ st.markdown(
 # ---------------------------------------------------------------------------
 # Konstanta default
 # ---------------------------------------------------------------------------
-MODEL_CHECKPOINT = "model.ckpt"   # Checkpoint lokal model DETR
+MODEL_CHECKPOINT = "nantarach/bone-fracture-detr"  # HuggingFace Hub model ID
 DEFAULT_CONFIDENCE = 0.5           # Ambang batas confidence default
 NMS_IOU_THRESHOLD = 0.5            # Ambang batas IoU untuk NMS (tidak dapat diubah via UI)
 MAX_IMAGE_SIDE = 800               # Panjang sisi terpanjang untuk resize (px)
@@ -371,9 +371,9 @@ BOX_COLOR = (99, 102, 241)         # Warna bounding box (indigo, RGB)
 TEXT_BG_COLOR = (99, 102, 241)     # Warna latar label teks
 TEXT_COLOR = (255, 255, 255)       # Warna teks label
 
-# Indeks kelas fraktur sesuai label_id model DETR yang dilatih.
-# Model ini menggunakan dua kelas: 0 = background/"no-object", 1 = fraktur.
-FRACTURE_CLASS_INDEX = 1
+# Label kelas fraktur untuk filtering hasil deteksi.
+# Digunakan jika model memiliki kelas selain fraktur (opsional).
+FRACTURE_LABEL = "fracture"
 
 
 # ---------------------------------------------------------------------------
@@ -390,23 +390,22 @@ if "history" not in st.session_state:
 @st.cache_resource(show_spinner="Memuat model DETR…")
 def load_model() -> Tuple[DetrImageProcessor, DetrForObjectDetection]:
     """
-    Memuat DetrImageProcessor dan DetrForObjectDetection dari checkpoint lokal.
+    Memuat DetrImageProcessor dan DetrForObjectDetection dari HuggingFace Hub.
     Model di-set ke mode evaluasi untuk inferensi.
 
     Returns:
         Tuple berisi (processor, model).
 
     Raises:
-        FileNotFoundError: Jika file checkpoint tidak ditemukan.
         RuntimeError: Jika terjadi kegagalan saat memuat model.
     """
     try:
-        logger.info("Memuat model DETR dari checkpoint: %s", MODEL_CHECKPOINT)
+        logger.info("Memuat model DETR dari HuggingFace Hub: %s", MODEL_CHECKPOINT)
 
         # Muat processor untuk preprocessing gambar (resize, normalisasi, padding)
         processor = DetrImageProcessor.from_pretrained(MODEL_CHECKPOINT)
 
-        # Muat bobot model DETR dari checkpoint lokal
+        # Muat bobot model DETR dari HuggingFace Hub
         model = DetrForObjectDetection.from_pretrained(MODEL_CHECKPOINT)
 
         # Set ke mode evaluasi: menonaktifkan dropout dan batch norm tracking
@@ -491,32 +490,24 @@ def run_inference(
     with torch.no_grad():
         outputs = model(**inputs)
 
-    # Ambil logits (prediksi kelas mentah) dan pred_boxes (koordinat ternormalisasi)
-    logits = outputs.logits          # shape: (1, num_queries, num_classes + 1)
-    pred_boxes = outputs.pred_boxes  # shape: (1, num_queries, 4) - format cxcywh [0,1]
-
-    # Hitung confidence score menggunakan Softmax pada dimensi kelas
-    probs = torch.nn.functional.softmax(logits, dim=-1)
-
-    # Ambil skor kelas fraktur pada batch pertama
-    scores = probs[0, :, FRACTURE_CLASS_INDEX]
-    boxes = pred_boxes[0]
-
     # --- Post-Processing ---
+    # Gunakan post_process_object_detection dari processor untuk konversi
+    # koordinat yang benar. Metode ini memperhitungkan resize dan padding
+    # yang dilakukan saat preprocessing, sehingga bounding box akurat
+    # pada ukuran gambar asli.
+    target_sizes = torch.tensor([(orig_height, orig_width)])
+    results = processor.post_process_object_detection(
+        outputs, target_sizes=target_sizes, threshold=confidence_threshold
+    )
+
+    result = results[0]
+    scores = result["scores"]
+    boxes = result["boxes"]
+
     detections: List[Dict] = []
     for score, box in zip(scores, boxes):
         conf = score.item()
-
-        # Lewati prediksi di bawah ambang batas confidence
-        if conf < confidence_threshold:
-            continue
-
-        # Konversi format cxcywh (ternormalisasi) -> xyxy (piksel gambar asli)
-        cx, cy, w, h = box.tolist()
-        x1 = (cx - w / 2) * orig_width
-        y1 = (cy - h / 2) * orig_height
-        x2 = (cx + w / 2) * orig_width
-        y2 = (cy + h / 2) * orig_height
+        x1, y1, x2, y2 = box.tolist()
 
         # Klem koordinat agar tidak keluar dari batas gambar
         x1 = max(0, int(x1))
