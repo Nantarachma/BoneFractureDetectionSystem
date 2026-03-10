@@ -25,7 +25,7 @@ Sistem deteksi fraktur tulang pada citra X-Ray menggunakan model Deep Learning b
 
 ### Prasyarat
 - Python 3.9+
-- File checkpoint model DETR (`model.ckpt`) di direktori root proyek
+- Koneksi internet (model akan diunduh otomatis dari HuggingFace Hub: [`nantarach/bone-fracture-detr`](https://huggingface.co/nantarach/bone-fracture-detr))
 
 ### Langkah Instalasi
 
@@ -98,7 +98,6 @@ Input Citra X-Ray (JPG/PNG)
 BoneFractureDetectionSystem/
 ├── app.py              # Aplikasi utama (Streamlit)
 ├── requirements.txt    # Dependensi Python
-├── model.ckpt          # Checkpoint model DETR (tidak di-commit)
 ├── .gitignore          # File yang dikecualikan dari Git
 └── README.md           # Dokumentasi proyek
 ```
@@ -126,22 +125,21 @@ Berikut adalah variabel-variabel *hardcoded* di bagian atas file `app.py` yang d
 
 | Variabel | Default | Deskripsi | Cara Mengubah |
 |---|---|---|---|
-| `MODEL_CHECKPOINT` | `"model.ckpt"` | Path ke file checkpoint model DETR | Ganti dengan path/nama file checkpoint Anda, misalnya `"models/detr_v2.ckpt"` |
+| `MODEL_CHECKPOINT` | `"nantarach/bone-fracture-detr"` | ID model HuggingFace Hub atau path checkpoint lokal | Ganti dengan model ID HuggingFace atau path lokal, misalnya `"facebook/detr-resnet-50"` |
 | `DEFAULT_CONFIDENCE` | `0.5` | Nilai default slider confidence threshold | Ubah ke angka antara `0.0`-`1.0`; nilai lebih rendah = lebih banyak deteksi (lebih sensitif), nilai lebih tinggi = lebih sedikit deteksi (lebih presisi) |
 | `NMS_IOU_THRESHOLD` | `0.5` | Ambang batas IoU untuk Non-Maximum Suppression | Ubah ke angka antara `0.0`-`1.0`; nilai lebih rendah = penyaringan lebih ketat (lebih sedikit overlap), nilai lebih tinggi = mengizinkan lebih banyak overlap |
 | `MAX_IMAGE_SIDE` | `800` | Ukuran sisi terpanjang gambar saat preprocessing (piksel) | Naikkan untuk resolusi input lebih tinggi (membutuhkan lebih banyak memori), turunkan untuk inferensi lebih cepat |
 | `BOX_COLOR` | `(99, 102, 241)` | Warna bounding box dalam format RGB | Ganti tuple RGB, misalnya `(255, 0, 0)` untuk merah |
 | `TEXT_BG_COLOR` | `(99, 102, 241)` | Warna latar belakang label teks (RGB) | Sesuaikan dengan `BOX_COLOR` agar konsisten |
 | `TEXT_COLOR` | `(255, 255, 255)` | Warna teks label (RGB) | Pastikan kontras yang cukup terhadap `TEXT_BG_COLOR` |
-| `FRACTURE_CLASS_INDEX` | `1` | Indeks kelas fraktur pada output model | Ubah jika model Anda menggunakan indeks kelas yang berbeda; `0` biasanya adalah background |
 
 ### Contoh Mengubah Konfigurasi
 
 ```python
 # ---- Di bagian atas app.py ----
 
-# Menggunakan model checkpoint dari folder lain
-MODEL_CHECKPOINT = "models/detr_fracture_v2.ckpt"
+# Menggunakan model lain dari HuggingFace Hub
+MODEL_CHECKPOINT = "facebook/detr-resnet-50"
 
 # Meningkatkan sensitivitas deteksi (lebih banyak hasil, termasuk yang kurang yakin)
 DEFAULT_CONFIDENCE = 0.3
