@@ -857,6 +857,10 @@ if process_button:
             unsafe_allow_html=True,
         )
 
+        # Ambil hanya 1 deteksi dengan confidence tertinggi
+        if detections:
+            detections = [detections[0]]
+
         # Gambar bounding box pada gambar asli
         result_image = draw_detections(original_image, detections)
 
@@ -913,84 +917,24 @@ if process_button:
 
         st.markdown("")  # spacing
 
-        # ----- Tabs: Perbandingan & Detail -----
-        tab_compare, tab_detail = st.tabs(
-            ["🖼️ Perbandingan Citra", "📋 Detail Deteksi"]
+        # ----- Perbandingan Citra -----
+        st.markdown(
+            '<p class="section-label">🖼️ Perbandingan Citra</p>',
+            unsafe_allow_html=True,
         )
-
-        with tab_compare:
-            col_orig, col_result = st.columns(2)
-            with col_orig:
-                st.markdown(
-                    '<p class="section-label">Citra Asli</p>',
-                    unsafe_allow_html=True,
-                )
-                st.image(original_image, use_container_width=True)
-            with col_result:
-                st.markdown(
-                    '<p class="section-label">Hasil Deteksi</p>',
-                    unsafe_allow_html=True,
-                )
-                st.image(result_image, use_container_width=True)
-
-        with tab_detail:
-            if detections:
-                st.success(f"✅ Ditemukan **{len(detections)}** area fraktur.")
-
-                # Tabel deteksi
-                table_rows = ""
-                for i, det in enumerate(detections, start=1):
-                    x1, y1, x2, y2 = det["box"]
-                    conf = det["score"]
-                    color = get_confidence_color(conf)
-                    width = int(conf * 100)
-                    area = (x2 - x1) * (y2 - y1)
-
-                    table_rows += f"""
-                    <tr>
-                        <td><b>#{i}</b></td>
-                        <td>
-                            <div style="display:flex;align-items:center;gap:8px;">
-                                <span style="color:{color};font-weight:600;">{conf*100:.1f}%</span>
-                                <div class="conf-bar-bg" style="width:80px;">
-                                    <div class="conf-bar-fill" style="width:{width}%;background-color:{color};"></div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>({x1}, {y1}) &rarr; ({x2}, {y2})</td>
-                        <td>{area:,} px&sup2;</td>
-                    </tr>"""
-
-                st.markdown(
-                    f"""
-                    <table class="det-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Confidence</th>
-                                <th>Koordinat (x1,y1)&rarr;(x2,y2)</th>
-                                <th>Luas Area</th>
-                            </tr>
-                        </thead>
-                        <tbody>{table_rows}</tbody>
-                    </table>
-                    """,
-                    unsafe_allow_html=True,
-                )
-            else:
-                st.markdown(
-                    '<div class="card" style="text-align:center; border-color: rgba(34,197,94,0.4);">'
-                    '<div style="font-size:2.5rem; margin-bottom:0.5rem;">✅</div>'
-                    '<div style="font-size:1.2rem; font-weight:700; color:#22c55e; margin-bottom:0.5rem;">'
-                    'Tidak Terdeteksi Fraktur</div>'
-                    '<div style="color:#8b949e; font-size:0.9rem;">'
-                    'Sistem <b>tidak menemukan</b> indikasi fraktur pada citra X-Ray ini '
-                    'dengan threshold <b>{:.0%}</b>.<br>'
-                    '⚠️ <i>Hasil ini bersifat asistensi dan bukan diagnosis medis. '
-                    'Selalu konsultasikan dengan dokter atau radiolog untuk interpretasi klinis.</i>'
-                    '</div></div>'.format(confidence_threshold),
-                    unsafe_allow_html=True,
-                )
+        col_orig, col_result = st.columns(2)
+        with col_orig:
+            st.markdown(
+                '<p class="section-label">Citra Asli</p>',
+                unsafe_allow_html=True,
+            )
+            st.image(original_image, use_container_width=True)
+        with col_result:
+            st.markdown(
+                '<p class="section-label">Hasil Deteksi</p>',
+                unsafe_allow_html=True,
+            )
+            st.image(result_image, use_container_width=True)
 
         # ----- Auto-Suggest Threshold -----
         suggested = suggest_threshold(all_fracture_scores)
