@@ -373,9 +373,10 @@ TEXT_BG_COLOR = (99, 102, 241)     # Warna latar label teks
 TEXT_COLOR = (255, 255, 255)       # Warna teks label
 
 FRACTURE_LABEL = 0                 # Label 0 = fraktur pada model DETR
-MIN_BOX_AREA_RATIO = 0.001        # Minimum luas bbox sebagai rasio terhadap luas gambar
-MAX_BOX_AREA_RATIO = 0.90         # Maksimum luas bbox sebagai rasio terhadap luas gambar
+MIN_BOX_AREA_RATIO = 0.001        # Min rasio luas bbox/gambar (< 0.1% = noise piksel)
+MAX_BOX_AREA_RATIO = 0.90         # Max rasio luas bbox/gambar (> 90% = seluruh gambar)
 RAW_SCORE_THRESHOLD = 0.01        # Threshold rendah untuk mengumpulkan semua skor mentah
+MIN_SUGGEST_GAP = 0.05            # Gap minimum antar skor untuk auto-suggest threshold
 
 
 # ---------------------------------------------------------------------------
@@ -477,8 +478,7 @@ def suggest_threshold(scores: List[float]) -> Optional[float]:
             max_gap = gap
             best_threshold = (sorted_scores[i] + sorted_scores[i + 1]) / 2
 
-    # Hanya sarankan jika gap cukup signifikan (> 5%)
-    if max_gap < 0.05:
+    if max_gap < MIN_SUGGEST_GAP:
         return None
 
     return round(best_threshold, 2)
@@ -545,6 +545,8 @@ def run_inference(
     detections: List[Dict] = []
     label_filtered = 0
     bbox_filtered = 0
+    min_box_area = image_area * MIN_BOX_AREA_RATIO
+    max_box_area = image_area * MAX_BOX_AREA_RATIO
 
     for score, box, label in zip(scores, boxes, labels):
         # --- Filter Label: hanya simpan kelas fraktur (label 0) ---
@@ -569,13 +571,13 @@ def run_inference(
 
         # --- Validasi Ukuran Bounding Box ---
         box_area = (x2 - x1) * (y2 - y1)
-        if box_area < image_area * MIN_BOX_AREA_RATIO:
+        if box_area < min_box_area:
             bbox_filtered += 1
-            logger.debug("Bbox terlalu kecil dibuang: area=%d, min=%d", box_area, int(image_area * MIN_BOX_AREA_RATIO))
+            logger.debug("Bbox terlalu kecil dibuang: area=%d, min=%d", box_area, int(min_box_area))
             continue
-        if box_area > image_area * MAX_BOX_AREA_RATIO:
+        if box_area > max_box_area:
             bbox_filtered += 1
-            logger.debug("Bbox terlalu besar dibuang: area=%d, max=%d", box_area, int(image_area * MAX_BOX_AREA_RATIO))
+            logger.debug("Bbox terlalu besar dibuang: area=%d, max=%d", box_area, int(max_box_area))
             continue
 
         detections.append({"box": (x1, y1, x2, y2), "score": conf})
