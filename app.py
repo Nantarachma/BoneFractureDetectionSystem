@@ -291,6 +291,31 @@ st.markdown(
             border-color: rgba(99, 102, 241, 0.3);
         }
 
+        /* ---- Sidebar history buttons (override main button style) ---- */
+        section[data-testid="stSidebar"] div.stButton > button {
+            background: linear-gradient(145deg, #161b2e 0%, #131827 100%) !important;
+            border: 1px solid rgba(99, 102, 241, 0.12) !important;
+            border-radius: 10px !important;
+            padding: 0.6rem 0.8rem !important;
+            font-size: 0.82rem !important;
+            color: #c9d1d9 !important;
+            text-align: left !important;
+            box-shadow: none !important;
+            font-weight: 500 !important;
+            letter-spacing: 0 !important;
+        }
+        section[data-testid="stSidebar"] div.stButton > button:hover {
+            border-color: rgba(99, 102, 241, 0.3) !important;
+            background: linear-gradient(145deg, #1a2038 0%, #161b2e 100%) !important;
+            transform: none !important;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1) !important;
+        }
+        section[data-testid="stSidebar"] div.stButton > button[kind="secondary"][data-active="true"],
+        section[data-testid="stSidebar"] div.stButton > button:focus {
+            border-color: rgba(99, 102, 241, 0.5) !important;
+            background: linear-gradient(145deg, #1e2442 0%, #1a2038 100%) !important;
+        }
+
         /* ---- Footer ---- */
         .footer {
             text-align: center;
@@ -384,6 +409,8 @@ MIN_SUGGEST_GAP = 0.05            # Gap minimum antar skor untuk auto-suggest th
 # ---------------------------------------------------------------------------
 if "history" not in st.session_state:
     st.session_state.history: List[Dict] = []
+if "selected_history" not in st.session_state:
+    st.session_state.selected_history: Optional[int] = None
 
 
 # ===========================================================================
@@ -710,6 +737,133 @@ def get_confidence_color(score: float) -> str:
 
 
 # ===========================================================================
+# 7. FUNGSI TAMPILAN HASIL DETEKSI
+#    Menampilkan ringkasan metrik, perbandingan citra, dan tombol unduh.
+# ===========================================================================
+def display_results(
+    original_image: Image.Image,
+    result_image: Image.Image,
+    detections: List[Dict],
+    inference_time: float,
+    label_filtered: int,
+    bbox_filtered: int,
+    all_fracture_scores: List[float],
+    confidence_threshold: float,
+) -> None:
+    """Menampilkan hasil deteksi fraktur secara lengkap di area utama."""
+
+    # Informasi waktu inferensi
+    st.markdown(
+        f'<div class="card" style="text-align:center;">'
+        f'⏱️ Waktu inferensi: <b>{inference_time:.2f} detik</b>'
+        f' &nbsp;|&nbsp; 🏷️ Filter label (non-fraktur): <b>{label_filtered}</b>'
+        f' &nbsp;|&nbsp; 📏 Filter ukuran bbox: <b>{bbox_filtered}</b>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.divider()
+
+    # ----- Ringkasan Metrik -----
+    avg_conf = (
+        sum(d["score"] for d in detections) / len(detections)
+        if detections
+        else 0.0
+    )
+    max_conf = max((d["score"] for d in detections), default=0.0)
+    min_conf = min((d["score"] for d in detections), default=0.0)
+
+    st.markdown(
+        '<p class="section-label">📊 Ringkasan Deteksi</p>',
+        unsafe_allow_html=True,
+    )
+    m1, m2, m3, m4 = st.columns(4)
+
+    with m1:
+        st.markdown(
+            f'<div class="metric-card">'
+            f'<div class="metric-value">{len(detections)}</div>'
+            f'<div class="metric-label">Fraktur Terdeteksi</div></div>',
+            unsafe_allow_html=True,
+        )
+    with m2:
+        st.markdown(
+            f'<div class="metric-card">'
+            f'<div class="metric-value">{avg_conf:.0%}</div>'
+            f'<div class="metric-label">Rata-rata Confidence</div></div>',
+            unsafe_allow_html=True,
+        )
+    with m3:
+        st.markdown(
+            f'<div class="metric-card">'
+            f'<div class="metric-value">{max_conf:.0%}</div>'
+            f'<div class="metric-label">Confidence Tertinggi</div></div>',
+            unsafe_allow_html=True,
+        )
+    with m4:
+        st.markdown(
+            f'<div class="metric-card">'
+            f'<div class="metric-value">{min_conf:.0%}</div>'
+            f'<div class="metric-label">Confidence Terendah</div></div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("")  # spacing
+
+    # ----- Perbandingan Citra -----
+    st.markdown(
+        '<p class="section-label">🖼️ Perbandingan Citra</p>',
+        unsafe_allow_html=True,
+    )
+    col_orig, col_result = st.columns(2)
+    with col_orig:
+        st.markdown(
+            '<p class="section-label">Citra Asli</p>',
+            unsafe_allow_html=True,
+        )
+        st.image(original_image, use_container_width=True)
+    with col_result:
+        st.markdown(
+            '<p class="section-label">Hasil Deteksi</p>',
+            unsafe_allow_html=True,
+        )
+        st.image(result_image, use_container_width=True)
+
+    # ----- Auto-Suggest Threshold -----
+    suggested = suggest_threshold(all_fracture_scores)
+    if suggested is not None and suggested != confidence_threshold:
+        st.markdown(
+            f'<div class="card" style="border-color: rgba(245,158,11,0.4);">'
+            f'💡 <b>Saran Threshold:</b> Berdasarkan distribusi {len(all_fracture_scores)} '
+            f'skor fraktur mentah, threshold optimal yang disarankan adalah '
+            f'<b>{suggested:.2f}</b> (saat ini: {confidence_threshold:.2f}). '
+            f'Atur slider di sidebar untuk menyesuaikan.'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ----- Tombol unduh gambar hasil -----
+    st.divider()
+    dl_col1, dl_col2, _ = st.columns([1, 1, 2])
+    with dl_col1:
+        st.download_button(
+            label="⬇️ Unduh Hasil (PNG)",
+            data=image_to_bytes(result_image, "PNG"),
+            file_name="hasil_deteksi_fraktur.png",
+            mime="image/png",
+            use_container_width=True,
+        )
+    with dl_col2:
+        st.download_button(
+            label="⬇️ Unduh Hasil (JPEG)",
+            data=image_to_bytes(result_image, "JPEG"),
+            file_name="hasil_deteksi_fraktur.jpg",
+            mime="image/jpeg",
+            use_container_width=True,
+        )
+
+
+# ===========================================================================
 # SIDEBAR — Pengaturan
 # ===========================================================================
 with st.sidebar:
@@ -732,17 +886,13 @@ with st.sidebar:
     st.markdown('<p class="sidebar-header">Riwayat Sesi</p>', unsafe_allow_html=True)
     if st.session_state.history:
         for i, entry in enumerate(reversed(st.session_state.history), start=1):
-            idx = len(st.session_state.history) - i + 1
+            idx = len(st.session_state.history) - i
             count = entry["count"]
             avg = entry["avg_conf"]
             icon = "🔴" if count > 0 else "🟢"
-            st.markdown(
-                f'<div class="history-item">'
-                f"{icon} <b>#{idx}</b> &mdash; "
-                f"{count} fraktur (avg {avg:.0%})"
-                f"</div>",
-                unsafe_allow_html=True,
-            )
+            label = f"{icon} #{idx + 1} — {count} fraktur (avg {avg:.0%})"
+            if st.button(label, key=f"history_{idx}", use_container_width=True):
+                st.session_state.selected_history = idx
     else:
         st.caption("Belum ada deteksi yang dijalankan.")
 
@@ -847,16 +997,6 @@ if process_button:
             logger.exception("Inference error")
             st.stop()
 
-        # Tampilkan informasi waktu inferensi
-        st.markdown(
-            f'<div class="card" style="text-align:center;">'
-            f'⏱️ Waktu inferensi: <b>{inference_time:.2f} detik</b>'
-            f' &nbsp;|&nbsp; 🏷️ Filter label (non-fraktur): <b>{label_filtered}</b>'
-            f' &nbsp;|&nbsp; 📏 Filter ukuran bbox: <b>{bbox_filtered}</b>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
-
         # Ambil hanya 1 deteksi dengan confidence tertinggi
         if detections:
             detections = [detections[0]]
@@ -864,110 +1004,56 @@ if process_button:
         # Gambar bounding box pada gambar asli
         result_image = draw_detections(original_image, detections)
 
-        # Simpan ke riwayat sesi
+        # Simpan ke riwayat sesi (termasuk data lengkap untuk ditampilkan ulang)
         avg_conf = (
             sum(d["score"] for d in detections) / len(detections)
             if detections
             else 0.0
         )
-        st.session_state.history.append(
-            {"count": len(detections), "avg_conf": avg_conf}
+        st.session_state.history.append({
+            "count": len(detections),
+            "avg_conf": avg_conf,
+            "original_image": original_image.copy(),
+            "result_image": result_image.copy(),
+            "detections": detections,
+            "inference_time": inference_time,
+            "label_filtered": label_filtered,
+            "bbox_filtered": bbox_filtered,
+            "all_fracture_scores": all_fracture_scores,
+            "confidence_threshold": confidence_threshold,
+        })
+
+        # Pilih otomatis entri riwayat terbaru
+        st.session_state.selected_history = len(st.session_state.history) - 1
+
+        # Tampilkan hasil deteksi
+        display_results(
+            original_image=original_image,
+            result_image=result_image,
+            detections=detections,
+            inference_time=inference_time,
+            label_filtered=label_filtered,
+            bbox_filtered=bbox_filtered,
+            all_fracture_scores=all_fracture_scores,
+            confidence_threshold=confidence_threshold,
         )
 
-        st.divider()
-
-        # ----- Ringkasan Metrik -----
-        st.markdown(
-            '<p class="section-label">📊 Ringkasan Deteksi</p>',
-            unsafe_allow_html=True,
+elif st.session_state.selected_history is not None:
+    # Tampilkan hasil dari riwayat yang dipilih
+    idx = st.session_state.selected_history
+    if 0 <= idx < len(st.session_state.history):
+        entry = st.session_state.history[idx]
+        st.info(f"📂 Menampilkan riwayat deteksi **#{idx + 1}**")
+        display_results(
+            original_image=entry["original_image"],
+            result_image=entry["result_image"],
+            detections=entry["detections"],
+            inference_time=entry["inference_time"],
+            label_filtered=entry["label_filtered"],
+            bbox_filtered=entry["bbox_filtered"],
+            all_fracture_scores=entry["all_fracture_scores"],
+            confidence_threshold=entry["confidence_threshold"],
         )
-        m1, m2, m3, m4 = st.columns(4)
-
-        max_conf = max((d["score"] for d in detections), default=0.0)
-        min_conf = min((d["score"] for d in detections), default=0.0)
-
-        with m1:
-            st.markdown(
-                f'<div class="metric-card">'
-                f'<div class="metric-value">{len(detections)}</div>'
-                f'<div class="metric-label">Fraktur Terdeteksi</div></div>',
-                unsafe_allow_html=True,
-            )
-        with m2:
-            st.markdown(
-                f'<div class="metric-card">'
-                f'<div class="metric-value">{avg_conf:.0%}</div>'
-                f'<div class="metric-label">Rata-rata Confidence</div></div>',
-                unsafe_allow_html=True,
-            )
-        with m3:
-            st.markdown(
-                f'<div class="metric-card">'
-                f'<div class="metric-value">{max_conf:.0%}</div>'
-                f'<div class="metric-label">Confidence Tertinggi</div></div>',
-                unsafe_allow_html=True,
-            )
-        with m4:
-            st.markdown(
-                f'<div class="metric-card">'
-                f'<div class="metric-value">{min_conf:.0%}</div>'
-                f'<div class="metric-label">Confidence Terendah</div></div>',
-                unsafe_allow_html=True,
-            )
-
-        st.markdown("")  # spacing
-
-        # ----- Perbandingan Citra -----
-        st.markdown(
-            '<p class="section-label">🖼️ Perbandingan Citra</p>',
-            unsafe_allow_html=True,
-        )
-        col_orig, col_result = st.columns(2)
-        with col_orig:
-            st.markdown(
-                '<p class="section-label">Citra Asli</p>',
-                unsafe_allow_html=True,
-            )
-            st.image(original_image, use_container_width=True)
-        with col_result:
-            st.markdown(
-                '<p class="section-label">Hasil Deteksi</p>',
-                unsafe_allow_html=True,
-            )
-            st.image(result_image, use_container_width=True)
-
-        # ----- Auto-Suggest Threshold -----
-        suggested = suggest_threshold(all_fracture_scores)
-        if suggested is not None and suggested != confidence_threshold:
-            st.markdown(
-                f'<div class="card" style="border-color: rgba(245,158,11,0.4);">'
-                f'💡 <b>Saran Threshold:</b> Berdasarkan distribusi {len(all_fracture_scores)} '
-                f'skor fraktur mentah, threshold optimal yang disarankan adalah '
-                f'<b>{suggested:.2f}</b> (saat ini: {confidence_threshold:.2f}). '
-                f'Atur slider di sidebar untuk menyesuaikan.'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-
-        # ----- Tombol unduh gambar hasil -----
-        st.divider()
-        dl_col1, dl_col2, _ = st.columns([1, 1, 2])
-        with dl_col1:
-            st.download_button(
-                label="⬇️ Unduh Hasil (PNG)",
-                data=image_to_bytes(result_image, "PNG"),
-                file_name="hasil_deteksi_fraktur.png",
-                mime="image/png",
-                use_container_width=True,
-            )
-        with dl_col2:
-            st.download_button(
-                label="⬇️ Unduh Hasil (JPEG)",
-                data=image_to_bytes(result_image, "JPEG"),
-                file_name="hasil_deteksi_fraktur.jpg",
-                mime="image/jpeg",
-                use_container_width=True,
-            )
 
 # ===========================================================================
 # FOOTER
