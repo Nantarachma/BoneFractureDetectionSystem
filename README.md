@@ -127,8 +127,8 @@ Berikut adalah variabel-variabel *hardcoded* di bagian atas file `app.py` yang d
 | Variabel | Default | Deskripsi | Cara Mengubah |
 |---|---|---|---|
 | `MODEL_CHECKPOINT` | `"model.ckpt"` | Path ke file checkpoint model DETR | Ganti dengan path/nama file checkpoint Anda, misalnya `"models/detr_v2.ckpt"` |
-| `DEFAULT_CONFIDENCE` | `0.5` | Nilai default slider confidence threshold | Ubah ke angka antara `0.0`–`1.0`; nilai lebih rendah = lebih banyak deteksi (lebih sensitif), nilai lebih tinggi = lebih sedikit deteksi (lebih presisi) |
-| `NMS_IOU_THRESHOLD` | `0.5` | Ambang batas IoU untuk Non-Maximum Suppression | Ubah ke angka antara `0.0`–`1.0`; nilai lebih rendah = penyaringan lebih ketat (lebih sedikit overlap), nilai lebih tinggi = mengizinkan lebih banyak overlap |
+| `DEFAULT_CONFIDENCE` | `0.5` | Nilai default slider confidence threshold | Ubah ke angka antara `0.0`-`1.0`; nilai lebih rendah = lebih banyak deteksi (lebih sensitif), nilai lebih tinggi = lebih sedikit deteksi (lebih presisi) |
+| `NMS_IOU_THRESHOLD` | `0.5` | Ambang batas IoU untuk Non-Maximum Suppression | Ubah ke angka antara `0.0`-`1.0`; nilai lebih rendah = penyaringan lebih ketat (lebih sedikit overlap), nilai lebih tinggi = mengizinkan lebih banyak overlap |
 | `MAX_IMAGE_SIDE` | `800` | Ukuran sisi terpanjang gambar saat preprocessing (piksel) | Naikkan untuk resolusi input lebih tinggi (membutuhkan lebih banyak memori), turunkan untuk inferensi lebih cepat |
 | `BOX_COLOR` | `(99, 102, 241)` | Warna bounding box dalam format RGB | Ganti tuple RGB, misalnya `(255, 0, 0)` untuk merah |
 | `TEXT_BG_COLOR` | `(99, 102, 241)` | Warna latar belakang label teks (RGB) | Sesuaikan dengan `BOX_COLOR` agar konsisten |
