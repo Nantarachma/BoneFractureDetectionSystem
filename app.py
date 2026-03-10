@@ -363,7 +363,7 @@ st.markdown(
 # ---------------------------------------------------------------------------
 # Konstanta default
 # ---------------------------------------------------------------------------
-MODEL_CHECKPOINT = "nantarach/bone-fracture-detr"  # HuggingFace Hub model ID
+MODEL_CHECKPOINT = "nantarach/bone-fracture-detr/blob/main/model.ckpt"  # HuggingFace Hub model ID
 DEFAULT_CONFIDENCE = 0.5           # Ambang batas confidence default
 NMS_IOU_THRESHOLD = 0.5            # Ambang batas IoU untuk NMS (tidak dapat diubah via UI)
 MAX_IMAGE_SIDE = 800               # Panjang sisi terpanjang untuk resize (px)
