@@ -378,7 +378,6 @@ st.markdown(
         .stTabs [data-baseweb="tab"][aria-selected="true"] {
             background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
             color: white;
-            opacity: 1;
         }
         .stTabs [data-baseweb="tab-highlight"] {
             display: none;
