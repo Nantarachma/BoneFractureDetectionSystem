@@ -56,8 +56,8 @@ st.markdown(
 
         /* ---- Latar utama ---- */
         .stApp {
-            background: linear-gradient(160deg, #0a0e1a 0%, #101626 50%, #0d1220 100%);
-            color: #c9d1d9;
+            background: var(--background-color);
+            color: var(--text-color);
         }
 
         /* ---- Judul utama ---- */
@@ -81,7 +81,8 @@ st.markdown(
         /* ---- Sub-judul / deskripsi ---- */
         .subtitle {
             text-align: center;
-            color: #8b949e;
+            color: var(--text-color);
+            opacity: 0.8;
             font-size: 1rem;
             margin-bottom: 2rem;
             line-height: 1.7;
@@ -90,11 +91,11 @@ st.markdown(
 
         /* ---- Kartu pembungkus konten ---- */
         .card {
-            background: linear-gradient(145deg, #161b2e 0%, #131827 100%);
+            background: var(--secondary-background-color);
             border-radius: 16px;
             padding: 1.4rem;
             margin-bottom: 1rem;
-            border: 1px solid rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.2);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .card:hover {
@@ -142,9 +143,9 @@ st.markdown(
 
         /* ---- Download tombol ---- */
         div.stDownloadButton > button {
-            background: linear-gradient(135deg, #1e293b 0%, #1a2236 100%) !important;
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%) !important;
             border: 1px solid rgba(99, 102, 241, 0.3) !important;
-            color: #c4b5fd !important;
+            color: #3730a3 !important;
             border-radius: 12px !important;
             font-weight: 600 !important;
             transition: all 0.25s ease !important;
@@ -170,8 +171,8 @@ st.markdown(
 
         /* ---- Metrik kartu ---- */
         .metric-card {
-            background: linear-gradient(145deg, #161b2e 0%, #131827 100%);
-            border: 1px solid rgba(99, 102, 241, 0.15);
+            background: var(--secondary-background-color);
+            border: 1px solid rgba(99, 102, 241, 0.2);
             border-radius: 16px;
             padding: 1.3rem 1rem;
             text-align: center;
@@ -204,7 +205,8 @@ st.markdown(
         }
         .metric-label {
             font-size: 0.68rem;
-            color: #6b7280;
+            color: var(--text-color);
+            opacity: 0.72;
             text-transform: uppercase;
             letter-spacing: 1.2px;
             margin-top: 0.5rem;
@@ -223,8 +225,8 @@ st.markdown(
             border: 1px solid rgba(99, 102, 241, 0.15);
         }
         .det-table th {
-            background: linear-gradient(135deg, #161b2e 0%, #1a1f35 100%);
-            color: #818cf8;
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+            color: #4338ca;
             text-transform: uppercase;
             letter-spacing: 0.8px;
             font-size: 0.7rem;
@@ -236,7 +238,7 @@ st.markdown(
         .det-table td {
             padding: 0.7rem 1rem;
             border-bottom: 1px solid rgba(99, 102, 241, 0.08);
-            color: #c9d1d9;
+            color: var(--text-color);
         }
         .det-table tr:hover td {
             background-color: rgba(99, 102, 241, 0.05);
@@ -261,8 +263,8 @@ st.markdown(
 
         /* ---- Sidebar styling ---- */
         section[data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #0d1220 0%, #0a0e1a 100%);
-            border-right: 1px solid rgba(99, 102, 241, 0.12);
+            background: var(--secondary-background-color);
+            border-right: 1px solid rgba(99, 102, 241, 0.18);
         }
 
         /* ---- Sidebar header ---- */
@@ -278,13 +280,13 @@ st.markdown(
 
         /* ---- History item ---- */
         .history-item {
-            background: linear-gradient(145deg, #161b2e 0%, #131827 100%);
-            border: 1px solid rgba(99, 102, 241, 0.12);
+            background: var(--background-color);
+            border: 1px solid rgba(99, 102, 241, 0.16);
             border-radius: 10px;
             padding: 0.6rem 0.8rem;
             margin-bottom: 0.5rem;
             font-size: 0.82rem;
-            color: #c9d1d9;
+            color: var(--text-color);
             transition: border-color 0.2s ease;
         }
         .history-item:hover {
@@ -293,12 +295,12 @@ st.markdown(
 
         /* ---- Sidebar history buttons (override main button style) ---- */
         section[data-testid="stSidebar"] div.stButton > button {
-            background: linear-gradient(145deg, #161b2e 0%, #131827 100%) !important;
-            border: 1px solid rgba(99, 102, 241, 0.12) !important;
+            background: var(--background-color) !important;
+            border: 1px solid rgba(99, 102, 241, 0.16) !important;
             border-radius: 10px !important;
             padding: 0.6rem 0.8rem !important;
             font-size: 0.82rem !important;
-            color: #c9d1d9 !important;
+            color: var(--text-color) !important;
             text-align: left !important;
             box-shadow: none !important;
             font-weight: 500 !important;
@@ -306,20 +308,21 @@ st.markdown(
         }
         section[data-testid="stSidebar"] div.stButton > button:hover {
             border-color: rgba(99, 102, 241, 0.3) !important;
-            background: linear-gradient(145deg, #1a2038 0%, #161b2e 100%) !important;
+            background: #f8faff !important;
             transform: none !important;
             box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1) !important;
         }
         section[data-testid="stSidebar"] div.stButton > button[kind="secondary"][data-active="true"],
         section[data-testid="stSidebar"] div.stButton > button:focus {
             border-color: rgba(99, 102, 241, 0.5) !important;
-            background: linear-gradient(145deg, #1e2442 0%, #1a2038 100%) !important;
+            background: #eef2ff !important;
         }
 
         /* ---- Footer ---- */
         .footer {
             text-align: center;
-            color: #4b5563;
+            color: var(--text-color);
+            opacity: 0.7;
             font-size: 0.75rem;
             margin-top: 3rem;
             padding: 1.8rem 0;
@@ -330,12 +333,12 @@ st.markdown(
         /* ---- Image info badge ---- */
         .img-info {
             display: inline-block;
-            background: rgba(99, 102, 241, 0.08);
-            border: 1px solid rgba(99, 102, 241, 0.15);
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
             border-radius: 8px;
             padding: 0.3rem 0.65rem;
             font-size: 0.76rem;
-            color: #a5b4fc;
+            color: #4338ca;
             margin-right: 0.4rem;
             margin-bottom: 0.4rem;
             font-weight: 500;
@@ -359,21 +362,23 @@ st.markdown(
         /* ---- Tab styling ---- */
         .stTabs [data-baseweb="tab-list"] {
             gap: 0;
-            background: linear-gradient(145deg, #161b2e 0%, #131827 100%);
+            background: var(--secondary-background-color);
             border-radius: 12px;
             padding: 4px;
-            border: 1px solid rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(99, 102, 241, 0.2);
         }
         .stTabs [data-baseweb="tab"] {
             border-radius: 10px;
             font-weight: 600;
             font-size: 0.88rem;
             padding: 0.5rem 1.2rem;
-            color: #8b949e;
+            color: var(--text-color);
+            opacity: 0.8;
         }
         .stTabs [data-baseweb="tab"][aria-selected="true"] {
             background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
             color: white;
+            opacity: 1;
         }
         .stTabs [data-baseweb="tab-highlight"] {
             display: none;
